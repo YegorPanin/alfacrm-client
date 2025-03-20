@@ -1,49 +1,44 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import date
-from typing import Optional, Any
+from pydantic import BaseModel, ConfigDict, field_validator
+from typing import Any, Optional
 
-
-# 1. Базовые настройки для всех моделей
 class ALFABaseModel(BaseModel):
     """
-    Базовая модель для всех сущностей ALFA CRM.
-    Настройки адаптированы для Pydantic v2.
+    Базовая модель для всех сущностей с настройками:
+    - Запрет неизвестных полей
+    - Автоматическое преобразование дат в строки
     """
     model_config = ConfigDict(
         extra='forbid',
         json_encoders={
             date: lambda v: v.strftime('%Y-%m-%d')
-        },
-        use_enum_values=True,
-        validate_default=True
+        }
     )
 
-
-# 2. Миксин для диапазонов дат
 class DateRangeMixin(ALFABaseModel):
-    date_from: Optional[date] = Field(None, description="Дата начала")
-    date_to: Optional[date] = Field(None, description="Дата окончания")
+    """
+    Миксин для проверки диапазонов дат
+    """
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
 
     @field_validator('date_to')
     @classmethod
     def validate_date_range(cls, v: Optional[date], values: dict[str, Any]) -> Optional[date]:
-        if v and values.data.get('date_from') and v < values.data['date_from']:
-            raise ValueError('Дата окончания должна быть >= даты начала')
+        if v and (date_from := values.data.get('date_from')) and v < date_from:
+            raise ValueError('date_to must be >= date_from')
         return v
 
+class NumericRangeMixin(ALFABaseModel):
+    """
+    Миксин для проверки числовых диапазонов
+    """
+    value_from: Optional[float] = None
+    value_to: Optional[float] = None
 
-# 3. Модель фильтрации клиентов
-class CustomerFilter(DateRangeMixin):
-    id: Optional[int] = Field(None, description="ID клиента")
-    is_study: Optional[int] = Field(None, description="0-лид, 1-клиент")
-    age_from: Optional[int] = Field(None, ge=0, description="Возраст от")
-    age_to: Optional[int] = Field(None, ge=0, description="Возраст до")
-
-    # ... остальные поля
-
-    @field_validator('age_to')
+    @field_validator('value_to')
     @classmethod
-    def validate_age_range(cls, v: Optional[int], values: dict[str, Any]) -> Optional[int]:
-        if v and values.data.get('age_from') and v < values.data['age_from']:
-            raise ValueError('Максимальный возраст должен быть >= минимального')
+    def validate_numeric_range(cls, v: Optional[float], values: dict[str, Any]) -> Optional[float]:
+        if v and (value_from := values.data.get('value_from')) and v < value_from:
+            raise ValueError('value_to must be >= value_from')
         return v

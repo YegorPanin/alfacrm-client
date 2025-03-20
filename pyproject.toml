@@ -2,7 +2,7 @@
 name = "alfacrm-client"
 version = "0.1.0"
 description = "Клиент для ALFA CRM API"
-authors = [{name = "Your Name", email = "your@email.com"}]
+authors = [{name = "Yegor Panin", email = "epanin12@gmail.com", github = "https://github.com/YegorPanin"}]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
