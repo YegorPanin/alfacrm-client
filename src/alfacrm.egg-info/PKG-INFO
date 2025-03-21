@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: alfacrm
+Version: 0.1
+Summary: ALFA CRM API client
+Author-email: Yegor Panin <epanin12@gmail.com>
+License: MIT
+Project-URL: Repository, https://github.com/YegorPanin/alfacrm-client
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.0
+Requires-Dist: requests>=2.28.0

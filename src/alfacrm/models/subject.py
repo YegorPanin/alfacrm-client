@@ -35,12 +35,3 @@ class SubjectFilter(ALFABaseModel):
         ge=0,
         description="Номер страницы (отсчет с 0)"
     )
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "id": 1,
-                "page": 0
-            }
-        }
-    )

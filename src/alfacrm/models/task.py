@@ -1,80 +1,67 @@
-from datetime import datetime
-from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, field_validator, model_validator
+# task.py
+from datetime import date, datetime
+from typing import Optional, Literal
+from pydantic import Field, model_validator, field_validator
+from .base import ALFABaseModel, DateRangeMixin
 import re
 
-class TaskBase(BaseModel):
-    """Базовые поля задачи"""
-    company_id: Optional[int] = Field(None, description="ID компании")
-    user_id: Optional[int] = Field(None, description="ID создателя")
-    assigned_ids: Optional[List[int]] = Field(None, description="ID исполнителей")
-    group_ids: Optional[List[int]] = Field(None, description="ID групп")
-    customer_ids: Optional[List[int]] = Field(None, description="ID клиентов")
-    title: Optional[str] = Field(None, max_length=255, description="Заголовок")
-    text: Optional[str] = Field(None, description="Описание задачи")
-    is_archive: Optional[bool] = Field(None, description="Архивная")
-    is_done: Optional[bool] = Field(None, description="Выполнена")
-    is_private: Optional[bool] = Field(None, description="Приватная")
-    due_date: Optional[str] = Field(None, description="Дедлайн (YYYY-MM-DD)")
-    done_date: Optional[str] = Field(None, description="Дата выполнения")
-    priority: Optional[Literal[1, 2, 3]] = Field(
-        None, 
-        description="1-низкий, 2-нормальный, 3-высокий"
-    )
+TaskStatus = Literal['new', 'in_progress', 'completed', 'canceled']
+TaskPriority = Literal['low', 'medium', 'high']
 
-    @field_validator("due_date", "done_date", "created_at")
-    def validate_dates(cls, v: str) -> str:
-        if v and not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
-            raise ValueError("Формат даты: YYYY-MM-DD")
+class TaskBase(ALFABaseModel):
+    """Базовые параметры задачи"""
+    title: str = Field(
+        ...,
+        min_length=3,
+        max_length=200,
+        description="Заголовок задачи"
+    )
+    description: Optional[str] = Field(None, max_length=1000)
+    due_date: date = Field(..., description="Срок выполнения")
+    status: TaskStatus = Field('new')
+    priority: TaskPriority = Field('medium')
+    type_id: int = Field(..., gt=0, description="Тип задачи из справочника")
+    customer_id: Optional[int] = Field(None, gt=0)
+    assigned_to: int = Field(..., gt=0, description="Исполнитель")
+    branch_id: int = Field(..., gt=0)
+
+    @field_validator("due_date", mode="before")
+    def parse_due_date(cls, v: str | date) -> date:
+        if isinstance(v, str):
+            return datetime.strptime(v, "%Y-%m-%d").date()
         return v
+
+    @model_validator(mode='after')
+    def validate_due_date(self) -> 'TaskBase':
+        if self.due_date < date.today():
+            raise ValueError("Дата выполнения не может быть в прошлом")
+        return self
 
 class TaskCreate(TaskBase):
-    """Обязательные поля для создания задачи"""
-    title: str = Field(..., max_length=255)
-    text: str = Field(...)
-    user_id: int = Field(...)
-    assigned_ids: List[int] = Field(..., min_items=1)
+    """Обязательные поля при создании задачи"""
+    pass
 
-class TaskUpdate(BaseModel):
+class TaskUpdate(ALFABaseModel):
     """Поля для обновления задачи"""
-    note: Optional[str] = Field(None, max_length=500, description="Комментарий")
+    status: Optional[TaskStatus] = None
+    due_date: Optional[date] = None
+    assigned_to: Optional[int] = Field(None, gt=0)
+    description: Optional[str] = None
 
 class TaskResponse(TaskBase):
-    """Полный ответ API"""
-    id: int
-    created_at: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-    updated_at: Optional[str] = None
+    """Полные данные задачи из системы"""
+    id: int = Field(...)
+    created_at: datetime = Field(...)
+    updated_at: datetime = Field(...)
+    completed_at: Optional[datetime] = None
 
-class TaskFilter(BaseModel):
-    """Фильтрация задач"""
-    id: Optional[int] = None
-    user_id: Optional[int] = None
-    assigned_id: Optional[int] = None
-    text: Optional[str] = None
-    priority: Optional[Literal[1, 2, 3]] = None
-    due_date_from: Optional[str] = None
-    due_date_to: Optional[str] = None
-    due_date_is_null: Optional[bool] = None
-    done_date_from: Optional[str] = None
-    done_date_to: Optional[str] = None
-    is_done: Optional[bool] = None
-    is_archive: Optional[bool] = None
+class TaskFilter(ALFABaseModel, DateRangeMixin):
+    """Фильтр для поиска задач"""
+    title: Optional[str] = None
+    status: Optional[TaskStatus] = None
+    priority: Optional[TaskPriority] = None
+    type_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    assigned_to: Optional[int] = None
+    show_completed: bool = Field(False, description="Включать выполненные")
     page: int = Field(0, ge=0)
-
-    @field_validator("due_date_from", "due_date_to", "done_date_from", "done_date_to")
-    def validate_date_format(cls, v: str) -> str:
-        if v and not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
-            raise ValueError("Формат даты: YYYY-MM-DD")
-        return v
-
-    @model_validator(mode="after")
-    def validate_date_ranges(self) -> 'TaskFilter':
-        if self.due_date_from and self.due_date_to:
-            if self.due_date_from > self.due_date_to:
-                raise ValueError("due_date_to должен быть >= due_date_from")
-        
-        if self.done_date_from and self.done_date_to:
-            if self.done_date_from > self.done_date_to:
-                raise ValueError("done_date_to должен быть >= done_date_from")
-        
-        return self

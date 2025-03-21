@@ -1,21 +1,23 @@
 from datetime import datetime
 from typing import Optional, Literal
 from pydantic import Field, BaseModel, field_validator, model_validator
+from .base import ALFABaseModel
 import re
+from enum import Enum
 
 class CommunicationBase(ALFABaseModel):
     """Базовые поля коммуникации"""
     type_id: Optional[int] = Field(
-        None, 
+        None,
         description="Тип коммуникации: 1 - комментарий"
     )
     user_id: Optional[int] = Field(
-        None, 
+        None,
         description="ID пользователя"
     )
     comment: Optional[str] = Field(
-        None, 
-        max_length=2048, 
+        None,
+        max_length=2048,
         description="Текст комментария"
     )
 
@@ -23,7 +25,7 @@ class CommunicationCreate(ALFABaseModel):
     """Модель для создания комментария (параметры в URL + тело)"""
     comment: str = Field(..., max_length=2048)
     q_class: Literal['Customer', 'Group'] = Field(
-        ..., 
+        ...,
         alias="class",
         description="Класс связанной сущности"
     )
@@ -113,30 +115,24 @@ class MailMessageResponse(ALFABaseModel):
     sent_date: Optional[datetime]
 
 # Модели для звонков
-class PhoneCallDirection(Literal[1, 2]):
-    INCOMING = 1
-    OUTGOING = 2
+# Решение 1: Используем Enum
+class PhoneCallDirection(int, Enum):
+    Incoming = 1
+    Outgoing = 2
 
-class PhoneCallFilter(ALFABaseModel):
-    direction: Optional[PhoneCallDirection] = None
-    is_success: Optional[bool] = None
-    local_number: Optional[str] = None
-    remote_number: Optional[str] = None
-    date_from: Optional[str] = None
-    date_to: Optional[str] = None
-    page: int = Field(0, ge=0)
+# Решение 2: Используем Literal напрямую в поле
+class PhoneCallCreate(ALFABaseModel):
+    """
+    Модель для создания записи о телефонном звонке
+    """
+    phone_id: int = Field(..., description="ID контакта")
+    direction: int = Field(..., ge=1, le=2, description="1-входящий, 2-исходящий")
+    duration: int = Field(..., ge=0, description="Длительность в секундах")
+    result_id: int = Field(..., description="ID результата из справочника")
+    comment: str | None = Field(None, max_length=500)
+    manager_id: int | None = Field(None, description="ID ответственного менеджера")
+    branch_id: int | None = Field(None, description="ID филиала")
 
-    @field_validator("date_from", "date_to")
-    def validate_dates(cls, v: str) -> str:
-        if v and not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
-            raise ValueError("Формат даты: YYYY-MM-DD")
-        return v
-
-class PhoneCallResponse(ALFABaseModel):
+class PhoneCallResponse(PhoneCallCreate):
     id: int
-    direction: PhoneCallDirection
-    local_number: str
-    remote_number: str
-    duration: int
-    call_date: datetime
-    record_url: Optional[str]
+    created_at: str  # Можно заменить на datetime при необходимости

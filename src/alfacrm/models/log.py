@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Optional, Literal
 from pydantic import BaseModel, Field, field_validator, conint
 import re
+from .base import ALFABaseModel
 
-class LogBase(BaseModel):
+class LogBase(ALFABaseModel):
     """Базовые поля записи лога"""
     entity: Optional[str] = Field(None, description="Название сущности")
     entity_id: Optional[int] = Field(None, description="ID сущности")
