@@ -108,15 +108,32 @@ class ALFACRM:
     def _init_entities(self):
         """Инициализация всех поддерживаемых сущностей"""
 
-
         self.customer = self.Entity(
             self,
             'customer',
-            filter_model= CustomerFilter,
-            create_model= CustomerCreate,
-            update_model = CustomerUpdate,
+            filter_model=CustomerFilter,
+            create_model=CustomerCreate,
+            update_model=CustomerUpdate,
             branch_required=True
         )
+
+        self.branch = self.Entity(
+            self,
+            'branch',
+            filter_model=BranchBase,
+            create_model=BranchCreate,
+            update_model=BranchUpdate,
+            branch_required=False
+        )
+        self.CGI = self.Entity(
+            self,
+            'CGI',
+            filter_model=CGICreate,
+            create_model=CGIUpdate,
+            update_model=CGICustomerFilter,
+            branch_required=False
+        )
+
 
         # Добавьте другие сущности по аналогии:
         # self.branch = self.Entity(...)
